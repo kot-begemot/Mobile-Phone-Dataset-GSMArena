@@ -12,11 +12,11 @@ class Gsmarena():
     def __init__(self):
         self.phones = []
         self.features = ["Brand", "Model Name", "Model Image"]
+        self.allowed_features = ["Technology", "2G bands", "Status", "SIM", "Resolution", "OS", "Internal", "Video"]
         self.temp1 = []
         self.phones_brands = []
         self.url = 'https://www.gsmarena.com/' # GSMArena website url
-        self.new_folder_name = 'GSMArenaDataset' # Folder name on which files going to save.
-        self.absolute_path = os.popen('pwd').read().strip() + '/' + self.new_folder_name  # It create the absolute path of the GSMArenaDataset folder.
+        self.absolute_path = os.popen('pwd').read().strip()  # It create the absolute path of the GSMArenaDataset folder.
 
     # This function crawl the html code of the requested URL.
     def crawl_html_page(self, sub_url):
@@ -91,25 +91,17 @@ class Gsmarena():
                     text = text.rstrip()
                     text = text.replace("\n", "")
                     temp.append(text)
-                    if temp[0] in phone_data.keys():
-                        temp[0] = temp[0] + '_1'
-                    if temp[0] not in self.features:
-                        self.features.append(temp[0])
+                    if temp[0] in self.allowed_features:
+                        if temp[0] in phone_data.keys():
+                            temp[0] = temp[0] + '_1'
+                        if temp[0] not in self.features:
+                            self.features.append(temp[0])
                 if not temp:
                     continue
                 else:
-                    phone_data.update({temp[0]: temp[1]})
+                    if temp[0] in self.allowed_features:
+                        phone_data.update({temp[0]: temp[1]})
         return phone_data
-
-    # This function create the folder 'GSMArenaDataset'.
-    def create_folder(self):
-        if not os.path.exists(self.new_folder_name):
-            os.system('mkdir ' + self.new_folder_name)
-            print("Creating ", self.new_folder_name, " Folder....")
-            time.sleep(6)
-            print("Folder Created.")
-        else:
-            print(self.new_folder_name , "directory already exists")
 
     # This function check the csv file exists in the 'GSMArenaDataset' directory or not.
     def check_file_exists(self):
@@ -118,31 +110,35 @@ class Gsmarena():
     # This function save the devices specification to csv file.
     def save_specification_to_file(self):
         phone_brand = self.crawl_phone_brands()
-        self.create_folder()
         files_list = self.check_file_exists()
-        for brand in phone_brand:
-            phones_data = []
-            if (brand[0].title() + '.csv') not in files_list:
-                link = self.crawl_phones_models(brand[2])
-                model_value = 1
-                print("Working on", brand[0].title(), "brand.")
-                for value in link:
-                    datum = self.crawl_phones_models_specification(value, brand[0])
-                    datum = { k:v.replace('\n', ' ').replace('\r', ' ') for k,v in datum.items() }
-                    phones_data.append(datum)
-                    print("Completed ", model_value, "/", len(link))
-                    model_value+=1
-                with open(self.absolute_path + '/' + brand[0].title() + ".csv", "w")  as file:
-                    dict_writer = csv.DictWriter(file, fieldnames=self.features)
-                    dict_writer.writeheader()
+        file_name = "crawled_models.csv"
+        print('Writing to file: ' + self.absolute_path + '/' + file_name)
+
+        if (file_name) not in files_list:
+            with open(self.absolute_path + '/' + file_name, "w+")  as file:
+                dict_writer = csv.DictWriter(file, fieldnames=(self.features+self.allowed_features))
+                dict_writer.writeheader()
+               
+                for brand in phone_brand:
+                    phones_data = []
+                    link = self.crawl_phones_models(brand[2])
+                    model_value = 1
+                    print("Working on", brand[0].title(), "brand.")
+                    for value in link:
+                        datum = self.crawl_phones_models_specification(value, brand[0])
+                        datum = { k:v.replace('\n', ' ').replace('\r', ' ') for k,v in datum.items() }
+                        phones_data.append(datum)
+                        print("Completed ", model_value, "/", len(link))
+                        model_value+=1
+  
                     str_phones_data = json.dumps(phones_data)
                     encoded = str_phones_data.encode('utf-8')
                     load_list = json.loads(encoded)
                     for dicti in load_list:
                         dict_writer.writerow({k:v.encode('utf-8') for k,v in dicti.items()})
-                print("Data loaded in the file")
-            else:
-                print(brand[0].title() + '.csv file already in your directory.')
+                    print("Data loaded in the file")
+        else:
+            print(file_name + '.csv file already in your directory.')
 
 
 # This is the main function which create the object of Gsmarena class and call the save_specificiton_to_file function.
@@ -152,5 +148,6 @@ while i == 1:
         obj = Gsmarena()
         try:
             obj.save_specification_to_file()
+            i = 2
         except KeyboardInterrupt:
             print("File has been stopped due to KeyBoard Interruption.")
