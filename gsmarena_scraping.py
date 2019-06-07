@@ -92,8 +92,8 @@ class Gsmarena():
                     text = text.replace("\n", "")
                     temp.append(text)
                     if temp[0] in self.allowed_features:
-                        if temp[0] in phone_data.keys():
-                            temp[0] = temp[0] + '_1'
+                        # if temp[0] in phone_data.keys():
+                        #     temp[0] = temp[0] + '_1'
                         if temp[0] not in self.features:
                             self.features.append(temp[0])
                 if not temp:
